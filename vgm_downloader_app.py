@@ -26,9 +26,7 @@ class VGMDownloaderApp:
         self.export_directory = StringVar(
             value='Please choose an export directory...')
 
-        self.page_url = StringVar(
-            value='Enter URL of OST page'
-        )
+        self.page_url = StringVar(value='Enter URL of OST page')
 
         self.label = ttk.Label(
             self.frame, text='VGM Downloader', justify=CENTER)
@@ -37,7 +35,6 @@ class VGMDownloaderApp:
 
         self.entry_directory = ttk.Entry(self.frame, width=60,
                                          textvariable=self.export_directory)
-        self.entry_directory.state(['readonly'])
         self.entry_directory.grid(row=1, column=0)
 
         ttk.Button(self.frame, text="Choose directory to save soundtrack to",

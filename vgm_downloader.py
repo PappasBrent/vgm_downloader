@@ -5,7 +5,7 @@ Downloads all mp3 file from a given KH Insider game soundtrack page
 '''
 
 from os import chdir
-from urllib import request
+import requests
 from bs4 import BeautifulSoup
 
 __author__ = "Brent Pappas"
@@ -35,16 +35,14 @@ class VgmDownloader:
             filename:   The name to save the file as once downloaded
             url:        The url to download the mp3 file from
         '''
-        with request.urlopen(url) as page:
-            data = page.read()
-            file = open('{}'.format(filename), 'wb')
-            file.write(data)
-            file.close()
-            print("Download complete:", filename)
+        with requests.get(url) as page:
+            with open(f'{filename}', 'wb') as file:
+                file.write(page.content)
+        print("Download complete:", filename)
 
     def get_download_page_link(self, url: str):
         '''
-        Navigates to an mp3 file's download page
+        Returns the link to an mp3 file's download page
         from it's download preview page
 
         Args:
@@ -52,9 +50,8 @@ class VgmDownloader:
                     The download link to the mp3 file of the track
                     can be found here.
         '''
-        with request.urlopen(url) as page:
-            data = page.read()
-            soup = BeautifulSoup(data, 'html.parser')
+        with requests.get(url) as page:
+            soup = BeautifulSoup(page.content, 'html.parser')
             for link in soup.find_all('a'):
                 href = link.get('href')
                 if href.endswith('.mp3'):
@@ -68,23 +65,15 @@ class VgmDownloader:
             url:    The url to the soundtrack preview page.
                     A link to each track's preview page can be found here.
         '''
-        with request.urlopen(url) as page:
-            data = page.read()
-            soup = BeautifulSoup(data, 'html.parser')
-            hrefs = []
-            for link in soup.find_all('a'):
-                href = link.get('href')
-                if href not in hrefs and href is not None:
-                    if href.endswith('.mp3'):
-                        hrefs.append(href)
-            # print(*hrefs, sep='\n')
-            for i, _ in enumerate((hrefs)):
-                # Have to manually add link prefix in right now,
-                # need to automate that later
-                hrefs[i] = (self.prefix + hrefs[i])
-            return hrefs
+        with requests.get(url) as page:
+            soup = BeautifulSoup(page.content, 'html.parser')
+            # use a set comprehension instead of a list to avoid duplicates
+            hrefs = {f"{self.prefix}{href}" for a in soup.find_all('a') if (
+                href:= a.get('href')) and href.endswith('.mp3')}
 
-    def download_all_mp3s(self, url: str, directory_path: str=None):
+            return list(sorted(hrefs))
+
+    def download_all_mp3s(self, url: str, directory_path: str = None):
         '''
         Puts it all together
 
@@ -93,26 +82,29 @@ class VgmDownloader:
             directory_path:     The directory to download the soundtrack to.
                                 If unspecified, then the directory that the
                                 program was executed in will be used instead.
+
+        Returns:
+                                True if successful
         '''
         # Switch to designated directory if one was specified
         if directory_path is not None:
             chdir(directory_path)
 
-        hrefs = self.get_mp3_page_links(
-            url)
+        hrefs = self.get_mp3_page_links(url)
 
         for href in hrefs:
             # Only get the filename, not the whole link
             name = href[href.rfind('/') + 1:]
             # Replace special characters in links
-            name = name.replace('%2520', '-')
-            name = name.replace('%2528', '(')
-            name = name.replace('%2529', ')')
-            name = name.replace('%2', ' ')
+            name = name.replace('%2520', '-').replace('%2528', '(').replace(
+                '%2529', ')').replace('%2', ' ')
 
             download_link = self.get_download_page_link(href)
 
             self.download_mp3(name, download_link)
+
+        print("All downloads complete")
+        return True
 
 
 def main():
